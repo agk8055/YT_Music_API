@@ -1014,4 +1014,89 @@ class YTMService:
                 video_id = result['data']['id']
                 stream_url = await self.stream_service.get_stream_url(video_id)
                 result['data']['stream_url'] = stream_url
+
+    async def get_top_songs(self, region: str = None, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Get top latest songs globally or for a specific country/region.
+        
+        Args:
+            region: Country/region code (e.g., 'US', 'IN', 'GB'). If None, returns global top songs.
+            limit: Maximum number of songs to return (default: 20)
+        """
+        try:
+            # Define search queries for top songs based on region
+            if region:
+                # Country-specific top songs queries
+                search_queries = [
+                    f"top songs {region}",
+                    f"trending music {region}",
+                    f"latest hits {region}",
+                    f"popular songs {region}",
+                    f"chart toppers {region}"
+                ]
+            else:
+                # Global top songs queries
+                search_queries = [
+                    "top songs global",
+                    "trending music worldwide",
+                    "latest hits international",
+                    "popular songs worldwide",
+                    "chart toppers global"
+                ]
+            
+            all_songs = []
+            
+            for query in search_queries:
+                if len(all_songs) >= limit:
+                    break
+                    
+                # Search for songs with this query
+                results = await self._execute_async(self.ytm.search, query, limit=limit * 2, filter="songs")
+                
+                # Filter and add unique songs
+                for item in results:
+                    if len(all_songs) >= limit:
+                        break
+                        
+                    if item.get('resultType') == 'song':
+                        # Check if this song is not already in the list
+                        song_id = item.get('videoId')
+                        if not any(s.get('videoId') == song_id for s in all_songs):
+                            all_songs.append(item)
+            
+            # Transform the results
+            transformed_songs = self._transform_songs_data(all_songs)
+            
+            # If we don't have enough songs, try additional popular search terms
+            if len(transformed_songs) < limit:
+                additional_queries = [
+                    "viral songs",
+                    "trending on youtube",
+                    "most viewed music",
+                    "popular music videos",
+                    "hit songs 2024"
+                ]
+                
+                for query in additional_queries:
+                    if len(transformed_songs) >= limit:
+                        break
+                        
+                    results = await self._execute_async(self.ytm.search, query, limit=limit, filter="songs")
+                    
+                    for item in results:
+                        if len(transformed_songs) >= limit:
+                            break
+                            
+                        if item.get('resultType') == 'song':
+                            song_id = item.get('videoId')
+                            if not any(s.get('id') == song_id for s in transformed_songs):
+                                song_data = self._transform_songs_data([item])
+                                if song_data:
+                                    transformed_songs.extend(song_data)
+            
+            return transformed_songs[:limit]
+            
+        except Exception as e:
+            print(f"Error getting top songs for region {region}: {e}")
+            return []
  

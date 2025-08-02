@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import search, songs, albums, playlists, artists
+from api import search, songs, albums, playlists, artists, top_songs
 from config import settings
 
 app = FastAPI(
@@ -25,6 +25,7 @@ app.include_router(songs.router, prefix=settings.API_PREFIX)
 app.include_router(albums.router, prefix=settings.API_PREFIX)
 app.include_router(playlists.router, prefix=settings.API_PREFIX)
 app.include_router(artists.router, prefix=settings.API_PREFIX)
+app.include_router(top_songs.router, prefix=settings.API_PREFIX)
 
 @app.get("/")
 async def root():
