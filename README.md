@@ -1,116 +1,78 @@
 # YT Music API
 
-A FastAPI-based REST API that provides access to YouTube Music data and streaming capabilities.
+A FastAPI-based REST API for YouTube Music data and streaming.
 
 ## Features
 
-- Global search across songs, albums, playlists, and artists
-- Individual song, album, playlist, and artist endpoints
-- Stream URL generation for songs
-- Artist song listings
+- Search for songs, albums, artists, and playlists
+- Stream music from YouTube Music
+- RESTful API with comprehensive endpoints
 
-## Project Structure
+## Local Development
 
-```
-YT_Music_API/
-├── .gitignore             # To ignore Python cache, virtual envs, etc.
-├── README.md              # Project documentation
-├── requirements.txt       # Project dependencies
-├── main.py                # Main FastAPI app entry point and router setup
-├── config.py              # Application configuration (e.g., API prefixes)
-│
-├── api/                   # Directory for API endpoint routers
-│   ├── __init__.py
-│   ├── search.py          # Handles the global /search endpoint
-│   ├── songs.py           # Handles the /song/{id} endpoint
-│   ├── albums.py          # Handles the /album/{id} endpoint
-│   ├── playlists.py       # Handles the /playlist/{id} endpoint
-│   └── artists.py         # Handles /artist/{id} and /artist/{id}/songs
-│
-├── schemas/               # Pydantic models for data validation and response shapes
-│   ├── __init__.py
-│   ├── search.py          # Models for the global search response
-│   ├── song.py            # Model for a single song
-│   ├── album.py           # Model for an album
-│   ├── playlist.py        # Model for a playlist
-│   ├── artist.py          # Model for an artist
-│   └── common.py          # Shared/common models (e.g., Thumbnail)
-│
-└── services/              # Business logic and external service integrations
-    ├── __init__.py
-    ├── ytm_service.py     # Logic for interacting with the ytmusicapi library
-    └── stream_service.py  # Logic for getting stream URLs with yt-dlp
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-## Installation
+2. Run the development server:
+```bash
+python main.py
+```
 
-1. Clone the repository
-2. Install dependencies:
+The API will be available at `http://localhost:8000`
 
-   **Option 1: Full installation (includes yt-dlp for streaming)**
-   ```bash
-   pip install -r requirements.txt
-   ```
-   
-   **Option 2: Basic installation (without yt-dlp - streaming will be disabled)**
-   ```bash
-   pip install -r requirements-simple.txt
-   ```
-   
-   **Note:** If you encounter Rust compilation errors during installation, use Option 2 and install yt-dlp separately later if needed.
+## Production Deployment
 
-## Usage
+### Render Deployment
 
-1. **Test your setup first:**
-   ```bash
-   python test_setup.py
-   ```
+1. **Option 1: Using render.yaml (Recommended)**
+   - Connect your GitHub repository to Render
+   - Render will automatically detect the `render.yaml` file and deploy
+   - No additional configuration needed
 
-2. Start the server:
-   ```bash
-   python main.py
-   ```
+2. **Option 2: Manual Setup**
+   - Create a new Web Service on Render
+   - Set the following:
+     - **Build Command**: `pip install -r requirements.txt`
+     - **Start Command**: `gunicorn main:app -c gunicorn.conf.py`
+     - **Environment**: Python 3.11
 
-3. Access the API at `http://localhost:8000`
+### Docker Deployment
 
-## Troubleshooting
+1. Build the Docker image:
+```bash
+docker build -t yt-music-api .
+```
 
-### "Site does not support https" Error
-
-This is a common issue with ytmusicapi. The updated service will:
-
-1. **Use mock data for development** - The API will work even if YouTube Music is unavailable
-2. **Provide better error handling** - Clear error messages and graceful fallbacks
-3. **Test connection on startup** - Automatic detection of connection issues
-
-### Connection Issues
-
-If you're having trouble connecting to YouTube Music:
-
-1. **Check your internet connection**
-2. **Try updating ytmusicapi:**
-   ```bash
-   pip install --upgrade ytmusicapi
-   ```
-3. **Use the test script to diagnose:**
-   ```bash
-   python test_setup.py
-   ```
-4. **The app will work with mock data** for development and testing
+2. Run the container:
+```bash
+docker run -p 8000:8000 yt-music-api
+```
 
 ## API Endpoints
 
-- `GET /search` - Global search across all content types
-- `GET /song/{id}` - Get song details
-- `GET /album/{id}` - Get album details
-- `GET /playlist/{id}` - Get playlist details
-- `GET /artist/{id}` - Get artist details
-- `GET /artist/{id}/songs` - Get artist's songs
+- `GET /` - Welcome message
+- `GET /health` - Health check
+- `GET /docs` - API documentation (Swagger UI)
+- `GET /redoc` - Alternative API documentation
 
-## Development
+## Configuration
 
-This project uses:
-- FastAPI for the web framework
-- Pydantic for data validation
-- ytmusicapi for YouTube Music integration
-- yt-dlp for stream URL generation 
+The API uses environment variables for configuration. Create a `.env` file for local development:
+
+```env
+API_PREFIX=
+```
+
+## Health Check
+
+The API includes a health check endpoint at `/health` that returns:
+
+```json
+{
+  "status": "healthy"
+}
+```
+
+This endpoint is useful for load balancers and monitoring systems. 

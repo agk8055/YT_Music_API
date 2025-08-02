@@ -512,6 +512,11 @@ class YTMService:
                     # Get video ID for stream URL and thumbnails
                     video_id = item.get('videoId')
                     
+                    # Ensure title is not None
+                    title = item.get('title')
+                    if title is None:
+                        title = "Unknown Title"
+                    
                     # Transform thumbnails
                     thumbnails = []
                     if item.get('thumbnails'):
@@ -526,7 +531,7 @@ class YTMService:
                         "type": "song",
                         "data": {
                             "id": video_id,
-                            "title": item.get('title'),
+                            "title": title,
                             "artist": artist_string,
                             "album": item.get('album', {}).get('name') if item.get('album') else None,
                             "duration": item.get('duration'),
@@ -540,6 +545,11 @@ class YTMService:
                     artists = item.get('artists', [])
                     artist_names = [artist.get('name', '') for artist in artists if artist.get('name')]
                     artist_string = ", ".join(artist_names) if artist_names else "Unknown Artist"
+                    
+                    # Ensure title is not None
+                    title = item.get('title')
+                    if title is None:
+                        title = "Unknown Album"
                     
                     # Handle track_count - convert to string if it's an integer
                     track_count = item.get('trackCount')
@@ -560,7 +570,7 @@ class YTMService:
                         "type": "album",
                         "data": {
                             "id": item.get('browseId'),
-                            "title": item.get('title'),
+                            "title": title,
                             "artist": artist_string,
                             "year": item.get('year'),
                             "track_count": track_count,
@@ -574,6 +584,11 @@ class YTMService:
                         author = author[0].get('name', '') if isinstance(author[0], dict) else str(author[0])
                     elif not author:
                         author = None
+                    
+                    # Ensure title is not None
+                    title = item.get('title')
+                    if title is None:
+                        title = "Unknown Playlist"
                     
                     # Handle track_count - parse and validate
                     track_count = self._parse_track_count(item.get('itemCount'))
@@ -595,16 +610,51 @@ class YTMService:
                         "type": "playlist",
                         "data": {
                             "id": playlist_id,
-                            "title": item.get('title'),
+                            "title": title,
                             "author": author,
                             "track_count": track_count,
                             "thumbnails": thumbnails if thumbnails else None
                         }
                     }
                 elif result_type == 'artist':
-                    # For artist results, the structure has artist name directly
-                    artist_name = item.get('artist')
-                    artist_id = item.get('browseId')
+                    # For artist results, try multiple possible field names for artist name
+                    artist_name = None
+                    
+                    # Try different possible field names for artist ID
+                    artist_id = None
+                    possible_id_fields = ['browseId', 'channelId', 'id', 'artistId']
+                    for field in possible_id_fields:
+                        artist_id = item.get(field)
+                        if artist_id:
+                            break
+                    
+                    # If no ID found in direct fields, try to extract from artists array
+                    if not artist_id and item.get('artists'):
+                        artists = item.get('artists', [])
+                        if isinstance(artists, list) and artists:
+                            # Get the first artist's ID
+                            first_artist = artists[0]
+                            if isinstance(first_artist, dict):
+                                artist_id = first_artist.get('id')
+                    
+
+                    
+                    # Try different possible field names for artist name
+                    possible_name_fields = ['artist', 'name', 'title', 'author']
+                    for field in possible_name_fields:
+                        artist_name = item.get(field)
+                        if artist_name:
+                            break
+                    
+                    # If still no name found, try to extract from artists array
+                    if not artist_name and item.get('artists'):
+                        artists = item.get('artists', [])
+                        if isinstance(artists, list) and artists:
+                            artist_name = artists[0].get('name') if isinstance(artists[0], dict) else str(artists[0])
+                    
+                    # Ensure artist name is not None
+                    if artist_name is None:
+                        artist_name = "Unknown Artist"
                     
                     # Transform thumbnails
                     thumbnails = []
@@ -670,10 +720,19 @@ class YTMService:
                 }
             ]
         
+        # Ensure required fields are not None
+        title = video_details.get('title')
+        if title is None:
+            title = "Unknown Title"
+            
+        artist = video_details.get('author')
+        if artist is None:
+            artist = "Unknown Artist"
+        
         return {
             "id": video_id,
-            "title": video_details.get('title'),
-            "artist": video_details.get('author'),
+            "title": title,
+            "artist": artist,
             "duration": video_details.get('lengthSeconds'),
             "thumbnails": thumbnails if thumbnails else None,
             "url": f"https://www.youtube.com/watch?v={video_id}" if video_id else None
@@ -731,9 +790,14 @@ class YTMService:
                         "height": thumb.get('height')
                     })
         
+        # Ensure required fields are not None
+        title = playlist_data.get('title')
+        if title is None:
+            title = "Unknown Playlist"
+        
         return {
             "id": playlist_data.get('id'),
-            "title": playlist_data.get('title'),
+            "title": title,
             "description": playlist_data.get('description'),
             "author": playlist_data.get('author'),
             "track_count": track_count,
@@ -754,9 +818,14 @@ class YTMService:
                         "height": thumb.get('height')
                     })
         
+        # Ensure required fields are not None
+        name = artist_data.get('name')
+        if name is None:
+            name = "Unknown Artist"
+        
         return {
             "id": artist_data.get('channelId'),
-            "name": artist_data.get('name'),
+            "name": name,
             "description": artist_data.get('description'),
             "subscriber_count": artist_data.get('subscriberCount'),
             "thumbnails": thumbnails if thumbnails else None,
@@ -848,9 +917,14 @@ class YTMService:
                     }
                 ]
             
+            # Ensure required fields are not None
+            title = song.get('title')
+            if title is None:
+                title = "Unknown Title"
+            
             transformed_songs.append({
                 "id": song.get('videoId'),
-                "title": song.get('title', 'Unknown Title'),
+                "title": title,
                 "artist": artist_string,
                 "album": album_name,
                 "duration": song.get('duration'),
