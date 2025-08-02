@@ -52,10 +52,28 @@ docker run -p 8000:8000 yt-music-api
 
 ## API Endpoints
 
+### Core Endpoints
 - `GET /` - Welcome message
 - `GET /health` - Health check
 - `GET /docs` - API documentation (Swagger UI)
 - `GET /redoc` - Alternative API documentation
+
+### Search Endpoints
+- `GET /search` - Global search across songs, albums, playlists, and artists
+- `GET /search/songs` - Search for songs only
+- `GET /search/albums` - Search for albums only
+- `GET /search/artists` - Search for artists only
+- `GET /search/playlists` - Search for playlists only
+- `GET /search/suggestions` - Get search suggestions/autocomplete for a given keyword
+
+### Content Endpoints
+- `GET /songs/{song_id}` - Get song details by ID
+- `GET /albums/{album_id}` - Get album details by ID
+- `GET /playlists/{playlist_id}` - Get playlist details by ID
+- `GET /artists/{artist_id}` - Get artist details by ID
+- `GET /artists/{artist_id}/songs` - Get artist's top songs
+- `GET /artists/{artist_id}/albums` - Get artist's albums
+- `GET /artists/{artist_id}/playlists` - Get artist's playlists
 
 ## Configuration
 

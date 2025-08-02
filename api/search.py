@@ -6,6 +6,7 @@ from schemas.search_songs import SongSearchResponse
 from schemas.search_albums import AlbumSearchResponse
 from schemas.search_artists import ArtistSearchResponse
 from schemas.search_playlists import PlaylistSearchResponse
+from schemas.search_suggestions import SearchSuggestionsResponse
 from services.ytm_service import YTMService
 
 router = APIRouter(tags=["search"])
@@ -84,5 +85,20 @@ async def search_playlists(
         ytm_service = YTMService()
         results = await ytm_service.search_playlists(query, limit)
         return PlaylistSearchResponse(results=results)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/search/suggestions", response_model=SearchSuggestionsResponse)
+async def get_search_suggestions(
+    query: str,
+    limit: Optional[int] = 10
+):
+    """
+    Get search suggestions/autocomplete for a given keyword
+    """
+    try:
+        ytm_service = YTMService()
+        suggestions = await ytm_service.get_search_suggestion(query, limit)
+        return SearchSuggestionsResponse(suggestions=suggestions)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 

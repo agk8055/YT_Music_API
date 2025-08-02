@@ -143,6 +143,76 @@ class YTMService:
         transformed_results = self._transform_search_results(results)
         return transformed_results
 
+    async def get_search_suggestion(self, query: str, limit: int = 10) -> List[str]:
+        """
+        Get search suggestions/autocomplete for a given query.
+        """
+        try:
+            # Use the search function with a small limit to get suggestions
+            # We'll extract titles from the results to use as suggestions
+            results = await self._execute_async(self.ytm.search, query, limit=limit * 2)
+            
+            suggestions = []
+            seen_suggestions = set()
+            
+            for item in results:
+                if len(suggestions) >= limit:
+                    break
+                    
+                # Extract suggestion from different result types
+                suggestion = None
+                if item.get('resultType') == 'song':
+                    title = item.get('title', '')
+                    artist = item.get('artists', [])
+                    if artist and isinstance(artist, list) and len(artist) > 0:
+                        artist_name = artist[0].get('name', '') if isinstance(artist[0], dict) else str(artist[0])
+                        suggestion = f"{title} - {artist_name}"
+                    else:
+                        suggestion = title
+                elif item.get('resultType') == 'album':
+                    title = item.get('title', '')
+                    artist = item.get('artists', [])
+                    if artist and isinstance(artist, list) and len(artist) > 0:
+                        artist_name = artist[0].get('name', '') if isinstance(artist[0], dict) else str(artist[0])
+                        suggestion = f"{title} - {artist_name}"
+                    else:
+                        suggestion = title
+                elif item.get('resultType') == 'artist':
+                    # For artist results, try multiple possible field names for artist name
+                    artist_name = None
+                    
+                    # Try different possible field names for artist name
+                    possible_name_fields = ['artist', 'name', 'title', 'author']
+                    for field in possible_name_fields:
+                        artist_name = item.get(field)
+                        if artist_name:
+                            break
+                    
+                    # If still no name found, try to extract from artists array
+                    if not artist_name and item.get('artists'):
+                        artists = item.get('artists', [])
+                        if isinstance(artists, list) and artists:
+                            artist_name = artists[0].get('name') if isinstance(artists[0], dict) else str(artists[0])
+                    
+                    # Ensure artist name is not None
+                    if artist_name is None:
+                        artist_name = "Unknown Artist"
+                    
+                    suggestion = artist_name
+                elif item.get('resultType') == 'playlist':
+                    suggestion = item.get('title', '')
+                
+                # Add suggestion if it's valid and not already seen
+                if suggestion and suggestion.strip() and suggestion not in seen_suggestions:
+                    suggestions.append(suggestion.strip())
+                    seen_suggestions.add(suggestion.strip())
+            
+            return suggestions
+            
+        except Exception as e:
+            print(f"Error getting search suggestions for '{query}': {e}")
+            return []
+
     async def get_song(self, song_id: str) -> Dict[str, Any]:
         """
         Get song details by ID.
