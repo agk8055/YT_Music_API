@@ -19,6 +19,8 @@ class StreamService:
             'no_warnings': True,
             'default_search': 'auto',
             'source_address': '0.0.0.0',
+            'no_warnings': True,
+            'quiet': True,
         }
 
     async def get_stream_url(self, video_id: str) -> Optional[str]:
@@ -62,21 +64,21 @@ class StreamService:
                 elif 'formats' in info:
                     # Find the best audio format
                     formats = info['formats']
-                    audio_formats = [f for f in formats if f.get('acodec') != 'none']
+                    audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('url')]
                     
                     if audio_formats:
-                        # Sort by audio bitrate (abr) and filesize for highest quality
+                        # Sort by audio quality: bitrate, filesize, and prefer certain formats
                         audio_formats.sort(key=lambda x: (
-                            x.get('abr', 0) or 0,  # Audio bitrate
+                            x.get('abr', 0) or 0,  # Audio bitrate (highest priority)
                             x.get('filesize', 0) or 0,  # File size (higher = better quality)
-                            x.get('height', 0) or 0  # Height as fallback
+                            x.get('height', 0) or 0,  # Height as fallback
+                            # Prefer certain audio codecs
+                            1 if x.get('acodec', '').startswith('mp4a') else 0,
+                            1 if x.get('ext') in ['m4a', 'webm'] else 0
                         ), reverse=True)
                         
-                        # Prefer formats with higher bitrate and size
+                        # Select the best format
                         best_format = audio_formats[0]
-                        print(f"Selected format: {best_format.get('format_id')} - "
-                              f"Bitrate: {best_format.get('abr')}kbps, "
-                              f"Size: {best_format.get('filesize')} bytes")
                         
                         return best_format['url']
                 
@@ -142,6 +144,8 @@ class StreamService:
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': False,
+                'no_warnings': True,
+                'quiet': True,
             }
             
             with yt_dlp.YoutubeDL(info_opts) as ydl:
@@ -172,6 +176,8 @@ class StreamService:
                 'quiet': True,
                 'no_warnings': True,
                 'extract_flat': False,
+                'no_warnings': True,
+                'quiet': True,
             }
             
             with yt_dlp.YoutubeDL(info_opts) as ydl:
