@@ -5,6 +5,8 @@ import time
 import random
 import hashlib
 from functools import lru_cache
+import os
+import json
 
 class StreamService:
     def __init__(self):
@@ -13,7 +15,10 @@ class StreamService:
         self._stream_cache = {}
         self._cache_ttl = 3600  # 1 hour cache TTL
         
-        # Optimized yt-dlp options for faster extraction
+        # Get cookie file path from environment or use default
+        self.cookie_file = os.getenv('YOUTUBE_COOKIE_FILE', 'cookies.txt')
+        
+        # Optimized yt-dlp options for Render deployment with cookie support
         self.ydl_opts = {
             'format': 'bestaudio[ext=mp4]/bestaudio[ext=webm]/bestaudio/best',
             'extractaudio': False,
@@ -27,6 +32,8 @@ class StreamService:
             'no_warnings': True,
             'default_search': 'auto',
             'source_address': '0.0.0.0',
+            # Add cookie support to bypass bot detection
+            'cookiefile': self.cookie_file if os.path.exists(self.cookie_file) else None,
             # Optimized headers for better success rate
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -36,16 +43,27 @@ class StreamService:
                 'DNT': '1',
                 'Connection': 'keep-alive',
                 'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
             },
-            # Reduced retries for faster failure detection
-            'extractor_retries': 2,
-            'retries': 2,
-            'fragment_retries': 2,
+            # Increased retries and timeouts for Render
+            'extractor_retries': 3,
+            'retries': 3,
+            'fragment_retries': 3,
             'skip_unavailable_fragments': True,
             'keepvideo': False,
-            # Add timeout to prevent hanging
-            'socket_timeout': 10,
-            'extractor_timeout': 15,
+            # Increased timeouts for Render environment
+            'socket_timeout': 30,
+            'extractor_timeout': 45,
+            # Add rate limiting to avoid being blocked
+            'sleep_interval': 1,
+            'max_sleep_interval': 5,
+            # Add additional options for better compatibility
+            'no_color': True,
+            'geo_bypass': True,
+            'geo_bypass_country': 'US',
         }
 
     def _get_cache_key(self, video_id: str) -> str:
@@ -100,13 +118,13 @@ class StreamService:
             video_url = f"https://www.youtube.com/watch?v={video_id}"
             
             # Reduced delay for faster response
-            await asyncio.sleep(random.uniform(0.05, 0.2))
+            await asyncio.sleep(random.uniform(0.1, 0.5))
             
-            # Run yt-dlp with timeout
+            # Run yt-dlp with increased timeout for Render
             loop = asyncio.get_event_loop()
             result = await asyncio.wait_for(
                 loop.run_in_executor(None, self._extract_stream_url_optimized, video_url),
-                timeout=20.0  # 20 second timeout
+                timeout=60.0  # Increased timeout to 60 seconds for Render
             )
             
             # Cache successful result
@@ -126,7 +144,7 @@ class StreamService:
 
     def _extract_stream_url_optimized(self, url: str) -> Optional[str]:
         """
-        Optimized stream URL extraction with single strategy and better error handling.
+        Optimized stream URL extraction with multiple strategies and better error handling.
         
         Args:
             url: The YouTube URL
@@ -134,9 +152,41 @@ class StreamService:
         Returns:
             Direct stream URL or None if failed
         """
+        # Try multiple strategies with different configurations
+        strategies = [
+            self._extract_with_cookies,
+            self._extract_without_cookies,
+            self._extract_minimal_fallback
+        ]
+        
+        for strategy in strategies:
+            try:
+                result = strategy(url)
+                if result:
+                    return result
+            except Exception as e:
+                print(f"Strategy {strategy.__name__} failed: {e}")
+                continue
+        
+        return None
+
+    def _extract_with_cookies(self, url: str) -> Optional[str]:
+        """Extract stream URL with cookie support."""
         try:
-            # Use a single, optimized strategy
             opts = self.ydl_opts.copy()
+            
+            # Ensure cookie file exists and has valid content
+            if not os.path.exists(self.cookie_file):
+                print(f"Cookie file {self.cookie_file} not found, skipping cookie strategy")
+                return None
+            
+            # Check if cookie file has actual values (not placeholders)
+            with open(self.cookie_file, 'r') as f:
+                content = f.read()
+                if 'your_' in content and 'value_here' in content:
+                    print(f"Cookie file {self.cookie_file} contains placeholder values")
+                    print("Please replace placeholder values with actual YouTube cookies")
+                    return None
             
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(url, download=False)
@@ -168,11 +218,56 @@ class StreamService:
                 return None
                 
         except Exception as e:
-            print(f"Error in optimized stream URL extraction: {e}")
-            # Try fallback with minimal options
-            return self._extract_stream_url_fallback_minimal(url)
+            print(f"Error in cookie-based extraction: {e}")
+            return None
 
-    def _extract_stream_url_fallback_minimal(self, url: str) -> Optional[str]:
+    def _extract_without_cookies(self, url: str) -> Optional[str]:
+        """Extract stream URL without cookies (fallback)."""
+        try:
+            opts = self.ydl_opts.copy()
+            # Remove cookie file
+            opts.pop('cookiefile', None)
+            # Add additional headers to appear more like a real browser
+            opts['http_headers'].update({
+                'Referer': 'https://www.youtube.com/',
+                'Origin': 'https://www.youtube.com',
+                'Sec-Fetch-Site': 'same-origin',
+            })
+            
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                
+                # Try to get direct URL first
+                if 'url' in info:
+                    url_value = info['url']
+                    if self._is_direct_audio_url(url_value):
+                        return url_value
+                
+                # If no direct URL, find best audio format
+                if 'formats' in info:
+                    formats = info['formats']
+                    audio_formats = [f for f in formats if self._is_valid_audio_format(f)]
+                    
+                    if audio_formats:
+                        # Sort by quality and prefer certain formats
+                        audio_formats.sort(key=lambda x: (
+                            x.get('abr', 0) or 0,  # Audio bitrate
+                            x.get('filesize', 0) or 0,  # File size
+                            # Prefer mp4a codec and mp4/m4a extensions
+                            1 if x.get('acodec', '').startswith('mp4a') else 0,
+                            1 if x.get('ext') in ['m4a', 'mp4'] else 0,
+                            1 if x.get('ext') == 'webm' else 0
+                        ), reverse=True)
+                        
+                        return audio_formats[0]['url']
+                
+                return None
+                
+        except Exception as e:
+            print(f"Error in non-cookie extraction: {e}")
+            return None
+
+    def _extract_minimal_fallback(self, url: str) -> Optional[str]:
         """
         Minimal fallback method with basic configuration.
         
@@ -189,10 +284,13 @@ class StreamService:
                 'no_warnings': True,
                 'extractaudio': False,
                 'noplaylist': True,
-                'socket_timeout': 5,
-                'extractor_timeout': 10,
+                'socket_timeout': 15,
+                'extractor_timeout': 20,
                 'http_headers': {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Referer': 'https://www.youtube.com/',
                 },
             }
             

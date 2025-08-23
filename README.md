@@ -1,129 +1,199 @@
-# YT Music API
+# YouTube Music API
 
-A FastAPI-based REST API for YouTube Music data and streaming.
+A FastAPI-based REST API for YouTube Music data and streaming, optimized for deployment on Render.
 
 ## Features
 
-- Search for songs, albums, artists, and playlists
-- Stream music from YouTube Music
-- RESTful API with comprehensive endpoints
+- 🔍 Search for songs, albums, playlists, and artists
+- 🎵 Get song details and stream URLs
+- 📱 RESTful API with comprehensive documentation
+- ⚡ Optimized for performance with caching
+- 🔒 Cookie-based authentication to bypass bot detection
+- 🚀 Ready for deployment on Render
 
-## Local Development
+## Quick Start
 
-1. Install dependencies:
+### Local Development
+
+1. Clone the repository:
+```bash
+git clone <your-repo-url>
+cd YT_Music_API
+```
+
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Run the development server:
+3. Set up YouTube cookies (recommended for better access):
+   - Install a browser extension like "Get cookies.txt" or "Cookie Quick Manager"
+   - Go to https://www.youtube.com and sign in
+   - Export cookies for youtube.com domain
+   - Save them to `cookies.txt` in the project root
+
+4. Run the development server:
 ```bash
 python main.py
 ```
 
 The API will be available at `http://localhost:8000`
 
-## Production Deployment
+### Deployment on Render
 
-### Render Deployment
+1. **Fork/Clone this repository** to your GitHub account
 
-1. **Option 1: Using render.yaml (Recommended)**
-   - Connect your GitHub repository to Render
-   - Render will automatically detect the `render.yaml` file and deploy
-   - No additional configuration needed
+2. **Set up YouTube Cookies** (Highly Recommended):
+   - Install a browser extension like "Get cookies.txt" or "Cookie Quick Manager"
+   - Go to https://www.youtube.com and sign in
+   - Export cookies for youtube.com domain
+   - Create a `cookies.txt` file in your repository root with the exported cookies
+   - The format should be:
+     ```
+     .youtube.com	TRUE	/	FALSE	1735689600	VISITOR_INFO1_LIVE	your_cookie_value_here
+     .youtube.com	TRUE	/	FALSE	1735689600	LOGIN_INFO	your_cookie_value_here
+     .youtube.com	TRUE	/	FALSE	1735689600	SID	your_cookie_value_here
+     # ... more cookies
+     ```
 
-2. **Option 2: Manual Setup**
-   - Create a new Web Service on Render
-   - Set the following:
+3. **Deploy to Render**:
+   - Go to [Render Dashboard](https://dashboard.render.com/)
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Configure the service:
+     - **Name**: `yt-music-api` (or your preferred name)
+     - **Environment**: `Python 3`
      - **Build Command**: `pip install -r requirements.txt`
      - **Start Command**: `gunicorn main:app -c gunicorn.conf.py`
-     - **Environment**: Python 3.11
+     - **Plan**: Free (or paid for better performance)
 
-### Docker Deployment
-
-1. Build the Docker image:
-```bash
-docker build -t yt-music-api .
-```
-
-2. Run the container:
-```bash
-docker run -p 8000:8000 yt-music-api
-```
-
-## Troubleshooting
-
-### Stream URL Issues
-
-If you're experiencing issues with stream URLs returning `null` or slow response times, try the following:
-
-1. **Get stream URL (optimized):**
-   ```bash
-   curl "http://localhost:8000/song/{song_id}/stream"
-   ```
-
-2. **Check available formats:**
-   ```bash
-   curl "http://localhost:8000/song/{song_id}/formats"
-   ```
-
-3. **Get direct audio formats only:**
-   ```bash
-   curl "http://localhost:8000/song/{song_id}/direct-formats"
-   ```
-
-
-
-### Common Issues
-
-- **403 Forbidden errors**: YouTube may block requests due to rate limiting. The service includes better headers and retry logic.
-- **Format not available**: Some videos may not have the requested audio format. The service includes fallback mechanisms.
-- **HLS playlists**: The service now filters out HLS playlists and returns direct audio URLs.
-- **yt-dlp version**: Make sure you're using the latest version of yt-dlp (>=2024.3.10).
+4. **Environment Variables** (Optional):
+   - `YOUTUBE_COOKIE_FILE`: Path to cookie file (default: `cookies.txt`)
 
 ## API Endpoints
 
-### Core Endpoints
-- `GET /` - Welcome message
-- `GET /health` - Health check
-- `GET /docs` - API documentation (Swagger UI)
-- `GET /redoc` - Alternative API documentation
+### Search
+- `GET /api/search?q={query}&limit={limit}` - Search for songs, albums, playlists, artists
+- `GET /api/search/songs?q={query}&limit={limit}` - Search for songs only
+- `GET /api/search/albums?q={query}&limit={limit}` - Search for albums only
+- `GET /api/search/artists?q={query}&limit={limit}` - Search for artists only
+- `GET /api/search/playlists?q={query}&limit={limit}` - Search for playlists only
+- `GET /api/search/suggestions?q={query}&limit={limit}` - Get search suggestions
 
-### Search Endpoints
-- `GET /search` - Global search across songs, albums, playlists, and artists
-- `GET /search/songs` - Search for songs only
-- `GET /search/albums` - Search for albums only
-- `GET /search/artists` - Search for artists only
-- `GET /search/playlists` - Search for playlists only
-- `GET /search/suggestions` - Get search suggestions/autocomplete for a given keyword
+### Songs
+- `GET /api/song/{song_id}` - Get song details
+- `GET /api/song/{song_id}/stream` - Get stream URL
+- `GET /api/song/{song_id}/formats` - Get available audio formats
+- `GET /api/song/{song_id}/direct-formats` - Get direct audio formats only
+- `GET /api/song/{song_id}/test` - Test video accessibility
 
-### Content Endpoints
-- `GET /songs/{song_id}` - Get song details by ID
-- `GET /songs/{song_id}/stream` - Get stream URL for a song (optimized with caching)
-- `GET /songs/{song_id}/formats` - Get all available audio formats for a song
-- `GET /songs/{song_id}/direct-formats` - Get only direct audio formats (excluding HLS playlists)
-- `GET /albums/{album_id}` - Get album details by ID
-- `GET /playlists/{playlist_id}` - Get playlist details by ID
-- `GET /artists/{artist_id}` - Get artist details by ID
-- `GET /artists/{artist_id}/songs` - Get artist's top songs
-- `GET /artists/{artist_id}/albums` - Get artist's albums
-- `GET /artists/{artist_id}/playlists` - Get artist's playlists
+### Albums
+- `GET /api/album/{album_id}` - Get album details with tracks
 
-## Configuration
+### Playlists
+- `GET /api/playlist/{playlist_id}` - Get playlist details with tracks
 
-The API uses environment variables for configuration. Create a `.env` file for local development:
+### Artists
+- `GET /api/artist/{artist_id}` - Get artist details
+- `GET /api/artist/{artist_id}/songs` - Get artist's top songs
+- `GET /api/artist/{artist_id}/albums` - Get artist's albums
+- `GET /api/artist/{artist_id}/playlists` - Get artist's playlists
 
-```env
-API_PREFIX=
+### Top Songs
+- `GET /api/top-songs?region={region}&limit={limit}` - Get top songs globally or by region
+
+## Troubleshooting
+
+### Common Issues on Render
+
+1. **"Sign in to confirm you're not a bot" Error**:
+   - This is YouTube's bot detection system
+   - **Solution**: Add YouTube cookies to bypass this
+   - Follow the cookie setup instructions above
+
+2. **Timeout Errors**:
+   - The API has been optimized with longer timeouts for Render
+   - If you still get timeouts, try:
+     - Using the `/test` endpoint to check video accessibility
+     - Adding cookies for better access
+     - Trying a different video ID
+
+3. **Stream URL Returns Null**:
+   - This can happen due to region restrictions or video availability
+   - **Solutions**:
+     - Add YouTube cookies
+     - Check if the video is publicly accessible
+     - Try the `/formats` endpoint to see available formats
+
+### Cookie Setup Guide
+
+1. **Chrome Extension Method**:
+   - Install "Get cookies.txt" extension
+   - Go to https://www.youtube.com and sign in
+   - Click the extension icon → Export → Select youtube.com
+   - Save as `cookies.txt` in your project root
+
+2. **Firefox Extension Method**:
+   - Install "Cookie Quick Manager" extension
+   - Go to https://www.youtube.com and sign in
+   - Open the extension → Export → Select youtube.com
+   - Save as `cookies.txt` in your project root
+
+3. **Manual Method**:
+   - Open browser dev tools → Application/Storage → Cookies
+   - Find youtube.com cookies
+   - Copy the important ones (SID, HSID, SSID, etc.)
+   - Format them according to the template in `cookies.txt`
+
+### Performance Tips
+
+1. **Use Caching**: The API caches stream URLs for 1 hour
+2. **Batch Requests**: Make multiple requests in parallel when possible
+3. **Error Handling**: Use the `/test` endpoint to check video accessibility before requesting streams
+4. **Rate Limiting**: The API includes rate limiting to avoid being blocked by YouTube
+
+## Development
+
+### Project Structure
+```
+YT_Music_API/
+├── api/                    # API endpoints
+├── schemas/               # Pydantic models
+├── services/              # Business logic
+├── main.py               # FastAPI app
+├── requirements.txt      # Dependencies
+├── gunicorn.conf.py     # Production server config
+├── cookies.txt          # YouTube cookies (create this)
+└── README.md           # This file
 ```
 
-## Health Check
+### Adding New Features
 
-The API includes a health check endpoint at `/health` that returns:
+1. **New Endpoint**: Add to appropriate file in `api/`
+2. **New Schema**: Create in `schemas/`
+3. **New Service**: Add to `services/`
+4. **Update Dependencies**: Add to `requirements.txt`
 
-```json
-{
-  "status": "healthy"
-}
-```
+### Testing
 
-This endpoint is useful for load balancers and monitoring systems. 
+Test the API endpoints using the interactive documentation at `http://localhost:8000/docs` or `https://your-render-app.onrender.com/docs`
+
+## License
+
+This project is for educational purposes. Please respect YouTube's terms of service and use responsibly.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## Support
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Review the error messages in your Render logs
+3. Try the `/test` endpoint to diagnose video accessibility
+4. Ensure you have proper cookies set up 

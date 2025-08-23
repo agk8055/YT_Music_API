@@ -97,51 +97,73 @@ class YTMService:
         """
         Search for songs, albums, playlists, and artists.
         """
-        results = await self._execute_async(self.ytm.search, query, limit=limit)
-        transformed_results = self._transform_search_results(results)
-        
-        # Add stream URLs if requested
-        if include_stream_urls:
-            await self._add_stream_urls(transformed_results)
-        
-        return transformed_results
+        try:
+            results = await self._execute_async(self.ytm.search, query, limit=limit)
+            transformed_results = self._transform_search_results(results)
+            
+            # Add stream URLs if requested
+            if include_stream_urls:
+                await self._add_stream_urls(transformed_results)
+            
+            return transformed_results
+        except Exception as e:
+            print(f"Search error for query '{query}': {e}")
+            # Return empty results instead of failing completely
+            return []
 
     async def search_songs(self, query: str, limit: int = 20, include_stream_urls: bool = False) -> List[Dict[str, Any]]:
         """
         Search for songs only.
         """
-        results = await self._execute_async(self.ytm.search, query, limit=limit, filter="songs")
-        transformed_results = self._transform_search_results(results)
-        
-        # Add stream URLs if requested
-        if include_stream_urls:
-            await self._add_stream_urls(transformed_results)
-        
-        return transformed_results
+        try:
+            results = await self._execute_async(self.ytm.search, query, limit=limit, filter="songs")
+            transformed_results = self._transform_search_results(results)
+            
+            # Add stream URLs if requested
+            if include_stream_urls:
+                await self._add_stream_urls(transformed_results)
+            
+            return transformed_results
+        except Exception as e:
+            print(f"Search songs error for query '{query}': {e}")
+            # Return empty results instead of failing completely
+            return []
 
     async def search_albums(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         """
         Search for albums only.
         """
-        results = await self._execute_async(self.ytm.search, query, limit=limit, filter="albums")
-        transformed_results = self._transform_search_results(results)
-        return transformed_results
+        try:
+            results = await self._execute_async(self.ytm.search, query, limit=limit, filter="albums")
+            transformed_results = self._transform_search_results(results)
+            return transformed_results
+        except Exception as e:
+            print(f"Search albums error for query '{query}': {e}")
+            return []
 
     async def search_artists(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         """
         Search for artists only.
         """
-        results = await self._execute_async(self.ytm.search, query, limit=limit, filter="artists")
-        transformed_results = self._transform_search_results(results)
-        return transformed_results
+        try:
+            results = await self._execute_async(self.ytm.search, query, limit=limit, filter="artists")
+            transformed_results = self._transform_search_results(results)
+            return transformed_results
+        except Exception as e:
+            print(f"Search artists error for query '{query}': {e}")
+            return []
 
     async def search_playlists(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         """
         Search for playlists only.
         """
-        results = await self._execute_async(self.ytm.search, query, limit=limit, filter="playlists")
-        transformed_results = self._transform_search_results(results)
-        return transformed_results
+        try:
+            results = await self._execute_async(self.ytm.search, query, limit=limit, filter="playlists")
+            transformed_results = self._transform_search_results(results)
+            return transformed_results
+        except Exception as e:
+            print(f"Search playlists error for query '{query}': {e}")
+            return []
 
     async def get_search_suggestion(self, query: str, limit: int = 10) -> List[str]:
         """
