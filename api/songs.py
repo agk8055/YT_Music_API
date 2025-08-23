@@ -21,7 +21,7 @@ async def get_song(song_id: str):
 @router.get("/song/{song_id}/stream")
 async def get_song_stream(song_id: str):
     """
-    Get stream URL for a song
+    Get stream URL for a song (optimized with caching and performance improvements)
     """
     try:
         stream_service = StreamService()
@@ -40,4 +40,18 @@ async def get_song_formats(song_id: str):
         formats = await stream_service.get_available_formats(song_id)
         return {"formats": formats}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/song/{song_id}/direct-formats")
+async def get_song_direct_formats(song_id: str):
+    """
+    Get only direct audio formats (excluding HLS playlists) for a song
+    """
+    try:
+        stream_service = StreamService()
+        formats = await stream_service.get_direct_audio_formats(song_id)
+        return {"direct_formats": formats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+ 
