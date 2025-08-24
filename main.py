@@ -79,7 +79,7 @@ async def proxy_stream(
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=30.0
+                timeout=60.0
             )
         except asyncio.TimeoutError:
             logger.warning(f"Timeout getting stream URL for song_id: {song_id}")
