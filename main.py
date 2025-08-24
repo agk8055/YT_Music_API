@@ -80,7 +80,7 @@ async def proxy_stream(
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=15.0  # Reduced timeout
+                timeout=30.0  # Increased timeout
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=408, detail="Request timeout while getting stream URL")
@@ -150,7 +150,7 @@ async def proxy_stream_head(request: Request, song_id: str):
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=10.0  # Shorter timeout for HEAD requests
+                timeout=20.0  # Increased timeout for HEAD requests
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=408, detail="Request timeout while getting stream URL")
