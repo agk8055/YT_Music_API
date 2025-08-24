@@ -3,11 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import httpx
 import asyncio
+import time
+import logging
 from contextlib import asynccontextmanager
 
 from api import search, songs, albums, playlists, artists, top_songs
 from config import settings
 from services.stream_service import StreamService
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Define a lifespan context manager for application startup and shutdown
 @asynccontextmanager
@@ -61,71 +67,71 @@ async def proxy_stream(
 ):
     """
     Proxy stream for a song - gets stream URL from /song/{song_id}/stream and proxies the audio
-    
-    Args:
-        request: The incoming request object
-        song_id: YouTube video ID
-        format: Audio format preference (default: "bestaudio")
-        quality: Quality preference (default: "best")
     """
+    start_time = time.time()
     try:
-        # Validate song_id format
         if not song_id or len(song_id) != 11:
-            raise HTTPException(status_code=400, detail="Invalid song ID format. YouTube video IDs must be 11 characters.")
-        
-        # Use the shared StreamService instance
+            raise HTTPException(status_code=400, detail="Invalid song ID format.")
+
         stream_service = request.app.state.stream_service
         
-        # Get the stream URL with a shorter timeout
+        get_url_start_time = time.time()
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=30.0  # Increased timeout
+                timeout=30.0
             )
         except asyncio.TimeoutError:
+            logger.warning(f"Timeout getting stream URL for song_id: {song_id}")
             raise HTTPException(status_code=408, detail="Request timeout while getting stream URL")
-        
+        finally:
+            get_url_duration = time.time() - get_url_start_time
+            logger.info(f"Getting stream URL for {song_id} took {get_url_duration:.2f} seconds.")
+
         if not stream_url:
             raise HTTPException(status_code=404, detail="Stream URL not available")
-        
-        # Use the shared httpx.AsyncClient for streaming
+
         http_client = request.app.state.http_client
-        
+
         async def stream_audio():
             headers = {"Range": request.headers.get("range")} if "range" in request.headers else {}
+            first_byte_time = None
             
             async with http_client.stream("GET", stream_url, headers=headers) as response:
                 if response.status_code not in [200, 206]:
                     raise HTTPException(status_code=response.status_code, detail="Failed to fetch stream")
                 
                 async for chunk in response.aiter_bytes():
+                    if first_byte_time is None:
+                        first_byte_time = time.time()
+                        first_byte_duration = first_byte_time - get_url_start_time
+                        logger.info(f"Time to first byte for {song_id}: {first_byte_duration:.2f} seconds.")
                     yield chunk
-        
-        # Simplified response headers
+
         response_headers = {
             "Accept-Ranges": "bytes",
             "Cache-Control": "no-cache",
             "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges"
         }
 
-        # Let FastAPI handle Content-Length and Content-Range based on the stream
         return StreamingResponse(
             stream_audio(),
             media_type="audio/mpeg",
             headers=response_headers
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in proxy_stream for {song_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+    finally:
+        total_duration = time.time() - start_time
+        logger.info(f"Total request time for {song_id}: {total_duration:.2f} seconds.")
 
 
 @app.options("/proxy-stream/{song_id}")
 async def proxy_stream_options(song_id: str):
-    """
-    Handle CORS preflight requests for the proxy-stream endpoint
-    """
     return {
         "message": "CORS preflight response",
         "allowed_methods": ["GET", "HEAD", "OPTIONS"],
@@ -136,29 +142,23 @@ async def proxy_stream_options(song_id: str):
 
 @app.head("/proxy-stream/{song_id}")
 async def proxy_stream_head(request: Request, song_id: str):
-    """
-    Get metadata for a song stream without downloading the audio
-    """
     try:
-        # Validate song_id format
         if not song_id or len(song_id) != 11:
-            raise HTTPException(status_code=400, detail="Invalid song ID format. YouTube video IDs must be 11 characters.")
-        
-        # Use the shared StreamService instance
+            raise HTTPException(status_code=400, detail="Invalid song ID format.")
+
         stream_service = request.app.state.stream_service
         
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=20.0  # Increased timeout for HEAD requests
+                timeout=20.0
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=408, detail="Request timeout while getting stream URL")
-        
+
         if not stream_url:
             raise HTTPException(status_code=404, detail="Stream URL not available")
-        
-        # Return headers only
+
         return {
             "status": "available",
             "song_id": song_id,
@@ -166,7 +166,7 @@ async def proxy_stream_head(request: Request, song_id: str):
             "accept_ranges": "bytes",
             "content_type": "audio/mpeg"
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
