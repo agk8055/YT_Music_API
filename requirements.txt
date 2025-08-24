@@ -7,3 +7,7 @@ uvicorn
 python-dotenv
 gunicorn
 async-lru
+pydantic
+pydantic-settings
+aiohttp
+python-multipart
