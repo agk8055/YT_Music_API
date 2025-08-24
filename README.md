@@ -87,6 +87,11 @@ The API will be available at `http://localhost:8000`
 - `GET /api/song/{song_id}/direct-formats` - Get direct audio formats only
 - `GET /api/song/{song_id}/test` - Test video accessibility
 
+### Streaming
+- `GET /proxy-stream/{song_id}` - Proxy stream audio directly to client with seeking support
+- `HEAD /proxy-stream/{song_id}` - Get stream metadata without downloading audio
+- `OPTIONS /proxy-stream/{song_id}` - CORS preflight support
+
 ### Albums
 - `GET /api/album/{album_id}` - Get album details with tracks
 
@@ -151,6 +156,39 @@ The API will be available at `http://localhost:8000`
 2. **Batch Requests**: Make multiple requests in parallel when possible
 3. **Error Handling**: Use the `/test` endpoint to check video accessibility before requesting streams
 4. **Rate Limiting**: The API includes rate limiting to avoid being blocked by YouTube
+
+### Proxy Streaming
+
+The `/proxy-stream/{song_id}` endpoint provides direct audio streaming with several advantages:
+
+- **Direct Streaming**: Audio streams directly to the client without exposing YouTube URLs
+- **Seeking Support**: Supports HTTP Range requests for audio seeking in media players
+- **Format Control**: Accepts format and quality parameters for optimal streaming
+- **Error Handling**: Comprehensive error handling with meaningful error messages
+
+**Usage Examples**:
+```bash
+# Basic streaming
+GET /proxy-stream/dQw4w9WgXcQ
+
+# With format preference
+GET /proxy-stream/dQw4w9WgXcQ?format=bestaudio&quality=128
+
+# With range request for seeking
+GET /proxy-stream/dQw4w9WgXcQ
+Range: bytes=0-1048575
+
+# Get metadata only (HEAD request)
+HEAD /proxy-stream/dQw4w9WgXcQ
+
+# CORS preflight (OPTIONS request)
+OPTIONS /proxy-stream/dQw4w9WgXcQ
+```
+
+**Query Parameters**:
+- `format`: Audio format preference (default: "bestaudio")
+- `quality`: Quality preference (default: "best")
+- `range`: HTTP Range header for seeking support
 
 ## Development
 
