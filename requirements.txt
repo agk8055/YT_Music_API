@@ -1,4 +1,5 @@
 fastapi
+ytmusicapi
 httpx
 asyncio
 yt-dlp
