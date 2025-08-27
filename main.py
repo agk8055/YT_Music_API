@@ -34,6 +34,8 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# For production, it's recommended to restrict the origins to a specific list of trusted domains
+# Example: allow_origins=["https://your-frontend-domain.com"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -79,7 +81,7 @@ async def proxy_stream(
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=20.0
+                timeout=30.0
             )
         except asyncio.TimeoutError:
             logger.warning(f"Timeout getting stream URL for song_id: {song_id}")
@@ -142,6 +144,13 @@ async def proxy_stream_options(song_id: str):
 
 @app.head("/proxy-stream/{song_id}")
 async def proxy_stream_head(request: Request, song_id: str):
+    """
+    Get stream metadata without downloading audio. 
+    This is faster than the GET request as it only fetches the headers.
+    """
+    # TODO: This is inefficient as it still calls get_stream_url, 
+    # which can be slow. A future refactoring could involve a dedicated
+    # function in StreamService to only check for stream availability.
     try:
         if not song_id or len(song_id) != 11:
             raise HTTPException(status_code=400, detail="Invalid song ID format.")
@@ -151,7 +160,7 @@ async def proxy_stream_head(request: Request, song_id: str):
         try:
             stream_url = await asyncio.wait_for(
                 stream_service.get_stream_url(song_id),
-                timeout=20.0
+                timeout=10.0
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=408, detail="Request timeout while getting stream URL")

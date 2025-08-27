@@ -35,6 +35,8 @@ class StreamService:
             'sleep_interval': 1,
             'max_sleep_interval': 5,
             'no_color': True,
+            'geo_bypass': True,
+            'geo_bypass_country': 'IN',
         }
 
     @alru_cache(maxsize=128)
