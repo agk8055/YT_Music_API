@@ -8,6 +8,7 @@ from services.ytm_service import YTMService
 from services.stream_service import StreamService
 
 router = APIRouter(tags=["songs"])
+stream_service = StreamService()
 
 @router.get("/song/{song_id}", response_model=SongResponse)
 async def get_song(song_id: str):
@@ -27,42 +28,20 @@ async def get_song_stream(song_id: str):
     Get stream URL for a song (optimized with caching and performance improvements)
     """
     try:
-        stream_service = StreamService()
+        stream_url = await stream_service.get_stream_url(song_id)
         
-        # Add timeout handling for the entire request
-        try:
-            stream_url = await asyncio.wait_for(
-                stream_service.get_stream_url(song_id),
-                timeout=90.0  # 90 second timeout for the entire request
-            )
-            
-            if stream_url:
-                return {"stream_url": stream_url}
-            else:
-                return JSONResponse(
-                    status_code=404,
-                    content={
-                        "error": "Stream URL not available",
-                        "message": "Could not extract stream URL for this video. This might be due to region restrictions, age restrictions, or the video being private/deleted.",
-                        "video_id": song_id,
-                        "suggestions": [
-                            "Try using a different video ID",
-                            "Check if the video is publicly accessible",
-                            "Consider adding YouTube cookies for better access"
-                        ]
-                    }
-                )
-                
-        except asyncio.TimeoutError:
+        if stream_url:
+            return {"stream_url": stream_url}
+        else:
             return JSONResponse(
-                status_code=408,
+                status_code=404,
                 content={
-                    "error": "Request timeout",
-                    "message": "The request to get the stream URL timed out. This might be due to YouTube's rate limiting or network issues.",
+                    "error": "Stream URL not available",
+                    "message": "Could not extract stream URL for this video. This might be due to region restrictions, age restrictions, or the video being private/deleted.",
                     "video_id": song_id,
                     "suggestions": [
-                        "Try again in a few minutes",
-                        "Check your internet connection",
+                        "Try using a different video ID",
+                        "Check if the video is publicly accessible",
                         "Consider adding YouTube cookies for better access"
                     ]
                 }

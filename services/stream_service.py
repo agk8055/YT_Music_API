@@ -35,8 +35,6 @@ class StreamService:
             'sleep_interval': 1,
             'max_sleep_interval': 5,
             'no_color': True,
-            'geo_bypass': True,
-            'geo_bypass_country': 'US',
         }
 
     @alru_cache(maxsize=128)
@@ -49,39 +47,22 @@ class StreamService:
             
             # Run yt-dlp with increased timeout for Render
             loop = asyncio.get_event_loop()
-            result = await asyncio.wait_for(
-                loop.run_in_executor(None, self._extract_stream_url, video_url),
-                timeout=60.0
-            )
+            result = await loop.run_in_executor(None, self._extract_stream_url, video_url)
             
             return result
-        except asyncio.TimeoutError:
-            print(f"Timeout getting stream URL for {video_id}")
-            return None
         except Exception as e:
             print(f"Error getting stream URL for {video_id}: {e}")
             return None
 
     def _extract_stream_url(self, url: str) -> Optional[str]:
         """
-        Extract stream URL with multiple strategies.
+        Extract stream URL with a single strategy.
         """
-        strategies = [
-            self._extract_with_cookies,
-            self._extract_without_cookies,
-            self._extract_minimal_fallback
-        ]
-        
-        for strategy in strategies:
-            try:
-                result = strategy(url)
-                if result:
-                    return result
-            except Exception as e:
-                print(f"Strategy {strategy.__name__} failed: {e}")
-                continue
-        
-        return None
+        try:
+            return self._extract_with_cookies(url)
+        except Exception as e:
+            print(f"Strategy _extract_with_cookies failed: {e}")
+            return None
 
     def _get_ydl_opts(self, use_cookies: bool) -> Dict[str, Any]:
         """Get yt-dlp options with or without cookies."""
@@ -112,31 +93,7 @@ class StreamService:
             return None
         return self._extract_info_from_url(url, opts)
 
-    def _extract_without_cookies(self, url: str) -> Optional[str]:
-        """Extract stream URL without cookies (fallback)."""
-        opts = self._get_ydl_opts(use_cookies=False)
-        opts['http_headers'].update({
-            'Referer': 'https://www.youtube.com/',
-            'Origin': 'https://www.youtube.com',
-            'Sec-Fetch-Site': 'same-origin',
-        })
-        return self._extract_info_from_url(url, opts)
-
-    def _extract_minimal_fallback(self, url: str) -> Optional[str]:
-        """
-        Minimal fallback method with basic configuration.
-        """
-        minimal_opts = {
-            'format': 'bestaudio/best',
-            'quiet': True,
-            'no_warnings': True,
-            'socket_timeout': 15,
-            'extractor_timeout': 20,
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-        }
-        return self._extract_info_from_url(url, minimal_opts)
+    
 
     def _extract_info_from_url(self, url: str, opts: Dict[str, Any]) -> Optional[str]:
         """
