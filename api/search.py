@@ -10,6 +10,7 @@ from schemas.search_suggestions import SearchSuggestionsResponse
 from services.ytm_service import YTMService
 
 router = APIRouter(tags=["search"])
+ytm_service = YTMService()
 
 @router.get("/search", response_model=SearchResponse)
 async def search_content(
@@ -21,7 +22,6 @@ async def search_content(
     Global search across songs, albums, playlists, and artists
     """
     try:
-        ytm_service = YTMService()
         results = await ytm_service.search(query, limit, include_stream_urls)
         return SearchResponse(results=results)
     except Exception as e:
@@ -37,7 +37,6 @@ async def search_songs(
     Search for songs only
     """
     try:
-        ytm_service = YTMService()
         results = await ytm_service.search_songs(query, limit, include_stream_urls)
         return SongSearchResponse(results=results)
     except Exception as e:
@@ -52,7 +51,6 @@ async def search_albums(
     Search for albums only
     """
     try:
-        ytm_service = YTMService()
         results = await ytm_service.search_albums(query, limit)
         return AlbumSearchResponse(results=results)
     except Exception as e:
@@ -67,7 +65,6 @@ async def search_artists(
     Search for artists only
     """
     try:
-        ytm_service = YTMService()
         results = await ytm_service.search_artists(query, limit)
         return ArtistSearchResponse(results=results)
     except Exception as e:
@@ -82,7 +79,6 @@ async def search_playlists(
     Search for playlists only
     """
     try:
-        ytm_service = YTMService()
         results = await ytm_service.search_playlists(query, limit)
         return PlaylistSearchResponse(results=results)
     except Exception as e:
@@ -97,7 +93,6 @@ async def get_search_suggestions(
     Get search suggestions/autocomplete for a given keyword
     """
     try:
-        ytm_service = YTMService()
         suggestions = await ytm_service.get_search_suggestion(query, limit)
         return SearchSuggestionsResponse(suggestions=suggestions)
     except Exception as e:

@@ -9,6 +9,7 @@ from services.stream_service import StreamService
 
 router = APIRouter(tags=["songs"])
 stream_service = StreamService()
+ytm_service = YTMService()
 
 @router.get("/song/{song_id}", response_model=SongResponse)
 async def get_song(song_id: str):
@@ -16,7 +17,6 @@ async def get_song(song_id: str):
     Get song details by ID
     """
     try:
-        ytm_service = YTMService()
         song = await ytm_service.get_song(song_id)
         return SongResponse(song=song)
     except Exception as e:
@@ -100,7 +100,6 @@ async def get_song_formats(song_id: str):
     Get all available audio formats for a song
     """
     try:
-        stream_service = StreamService()
         formats = await stream_service.get_available_formats(song_id)
         return {"formats": formats}
     except Exception as e:
@@ -112,7 +111,6 @@ async def get_song_direct_formats(song_id: str):
     Get only direct audio formats (excluding HLS playlists) for a song
     """
     try:
-        stream_service = StreamService()
         formats = await stream_service.get_direct_audio_formats(song_id)
         return {"direct_formats": formats}
     except Exception as e:
@@ -124,7 +122,6 @@ async def test_song_access(song_id: str):
     Test if a song is accessible and get basic info
     """
     try:
-        stream_service = StreamService()
         test_result = await stream_service.test_video_accessibility(song_id)
         return test_result
     except Exception as e:
@@ -136,8 +133,6 @@ async def test_stream_health():
     Test stream service health with a known working video
     """
     try:
-        stream_service = StreamService()
-        
         # Test with a known working video (Rick Astley - Never Gonna Give You Up)
         test_video_id = "dQw4w9WgXcQ"
         

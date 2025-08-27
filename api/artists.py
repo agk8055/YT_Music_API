@@ -4,6 +4,7 @@ from schemas.artist import ArtistResponse, ArtistSongsResponse, ArtistPlaylistsR
 from services.ytm_service import YTMService
 
 router = APIRouter(tags=["artists"])
+ytm_service = YTMService()
 
 @router.get("/artist/{artist_id}", response_model=ArtistResponse)
 async def get_artist(artist_id: str):
@@ -11,7 +12,6 @@ async def get_artist(artist_id: str):
     Get artist details by ID
     """
     try:
-        ytm_service = YTMService()
         artist = await ytm_service.get_artist(artist_id)
         return ArtistResponse(artist=artist)
     except Exception as e:

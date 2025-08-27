@@ -4,7 +4,8 @@ from typing import Optional
 from schemas.top_songs import TopSongsResponse
 from services.ytm_service import YTMService
 
-router = APIRouter(tags=["top songs"])
+router = APIRouter(tags=["top-songs"])
+ytm_service = YTMService()
 
 @router.get("/top-songs", response_model=TopSongsResponse)
 async def get_top_songs(
@@ -18,7 +19,6 @@ async def get_top_songs(
     - **limit**: Maximum number of songs to return (1-50, default: 20)
     """
     try:
-        ytm_service = YTMService()
         songs = await ytm_service.get_top_songs(region=region, limit=limit)
         
         return TopSongsResponse(
@@ -40,7 +40,6 @@ async def get_global_top_songs(
     - **limit**: Maximum number of songs to return (1-50, default: 20)
     """
     try:
-        ytm_service = YTMService()
         songs = await ytm_service.get_top_songs(region=None, limit=limit)
         
         return TopSongsResponse(
@@ -64,7 +63,6 @@ async def get_country_top_songs(
     - **limit**: Maximum number of songs to return (1-50, default: 20)
     """
     try:
-        ytm_service = YTMService()
         songs = await ytm_service.get_top_songs(region=country_code.upper(), limit=limit)
         
         return TopSongsResponse(

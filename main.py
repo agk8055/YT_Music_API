@@ -60,6 +60,42 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+async def _stream_audio(request: Request, stream_url: str, song_id: str, get_url_start_time: float):
+    """
+    Asynchronously streams audio content from a given URL.
+
+    This generator function handles the streaming of audio data in chunks,
+    allowing for efficient memory usage and faster response times. It also
+    logs the time to the first byte of the stream.
+
+    Args:
+        request (Request): The incoming FastAPI request object.
+        stream_url (str): The URL of the audio stream to proxy.
+        song_id (str): The ID of the song being streamed.
+        get_url_start_time (float): The timestamp when the stream URL was fetched.
+
+    Yields:
+        bytes: Chunks of the audio stream.
+
+    Raises:
+        HTTPException: If the stream cannot be fetched from the source.
+    """
+    headers = {"Range": request.headers.get("range")} if "range" in request.headers else {}
+    first_byte_time = None
+    http_client = request.app.state.http_client
+
+    async with http_client.stream("GET", stream_url, headers=headers) as response:
+        if response.status_code not in [200, 206]:
+            logger.error(f"Failed to fetch stream for {song_id}. Status: {response.status_code}")
+            raise HTTPException(status_code=response.status_code, detail="Failed to fetch stream")
+
+        async for chunk in response.aiter_bytes(chunk_size=8192):
+            if first_byte_time is None:
+                first_byte_time = time.time()
+                first_byte_duration = first_byte_time - get_url_start_time
+                logger.info(f"Time to first byte for {song_id}: {first_byte_duration:.2f} seconds.")
+            yield chunk
+
 @app.get("/proxy-stream/{song_id}")
 async def proxy_stream(
     request: Request,
@@ -93,23 +129,6 @@ async def proxy_stream(
         if not stream_url:
             raise HTTPException(status_code=404, detail="Stream URL not available")
 
-        http_client = request.app.state.http_client
-
-        async def stream_audio():
-            headers = {"Range": request.headers.get("range")} if "range" in request.headers else {}
-            first_byte_time = None
-            
-            async with http_client.stream("GET", stream_url, headers=headers) as response:
-                if response.status_code not in [200, 206]:
-                    raise HTTPException(status_code=response.status_code, detail="Failed to fetch stream")
-                
-                async for chunk in response.aiter_bytes():
-                    if first_byte_time is None:
-                        first_byte_time = time.time()
-                        first_byte_duration = first_byte_time - get_url_start_time
-                        logger.info(f"Time to first byte for {song_id}: {first_byte_duration:.2f} seconds.")
-                    yield chunk
-
         response_headers = {
             "Accept-Ranges": "bytes",
             "Cache-Control": "no-cache",
@@ -117,7 +136,7 @@ async def proxy_stream(
         }
 
         return StreamingResponse(
-            stream_audio(),
+            _stream_audio(request, stream_url, song_id, get_url_start_time),
             media_type="audio/mpeg",
             headers=response_headers
         )
