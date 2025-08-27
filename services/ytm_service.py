@@ -139,7 +139,7 @@ class YTMService:
             return transformed_results
         except Exception as e:
             print(f"Search albums error for query '{query}': {e}")
-            return []
+            raise HTTPException(status_code=500, detail=f"Failed to search for albums for '{query}'")
 
     async def search_artists(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
         """
@@ -1121,4 +1121,7 @@ class YTMService:
         except Exception as e:
             print(f"Error getting top songs for region {region}: {e}")
             return []
+
+ytm_service = YTMService()
+  
  

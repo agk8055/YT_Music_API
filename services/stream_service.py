@@ -48,18 +48,23 @@ class StreamService:
             'socket_timeout': 10,
         })
 
-    @alru_cache(maxsize=256)
     async def get_stream_url(self, video_id: str) -> Optional[str]:
         """
-        Get the direct stream URL for a YouTube video ID with LRU caching.
+        Asynchronous wrapper for get_stream_url_sync.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.get_stream_url_sync, video_id)
+
+    def get_stream_url_sync(self, video_id: str) -> Optional[str]:
+        """
+        Get the direct stream URL for a YouTube video ID.
         Tries a fast method first, then falls back to a more reliable one.
         """
         video_url = f"https://www.youtube.com/watch?v={video_id}"
-        loop = asyncio.get_event_loop()
 
         try:
             # First, try the faster extraction method
-            result = await loop.run_in_executor(None, self._extract_info_from_url, video_url, True)
+            result = self._extract_info_from_url(video_url, True)
             if result:
                 return result
         except Exception as e:
@@ -67,7 +72,7 @@ class StreamService:
 
         # If the fast method fails or returns nothing, fall back to the standard method
         try:
-            result = await loop.run_in_executor(None, self._extract_info_from_url, video_url, False)
+            result = self._extract_info_from_url(video_url, False)
             return result
         except Exception as e:
             print(f"Standard stream extraction failed for {video_id}: {e}")
